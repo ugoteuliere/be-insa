@@ -1,29 +1,3 @@
-# Copyright 2018 CNRS
-
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-
-# 1. Redistributions of source code must retain the above copyright
-# notice, this list of conditions and the following disclaimer.
-
-# 2. Redistributions in binary form must reproduce the above copyright
-# notice, this list of conditions and the following disclaimer in the
-# documentation and/or other materials provided with the distribution.
-
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-
 import numpy as np
 import numpy.linalg
 from scipy.optimize import fmin_slsqp
@@ -31,14 +5,14 @@ from pinocchio import forwardKinematics, log, neutral
 import eigenpy
 
 class CallbackLogger:
-     def __init__(self):
-          self.nfeval = 1
-     def __call__(self,x):
-          print('===CBK=== {0:4d}   {1}'.format(self.nfeval, x))
-          self.nfeval += 1
+	def __init__(self):
+		self.nfeval = 1
+	def __call__(self,x):
+		print('===CBK=== {0:4d}   {1}'.format(self.nfeval, x))
+		self.nfeval += 1
 
 def normalized_quaternion(q):
-     return numpy.linalg.norm(q[3:7]) - 1
+	return numpy.linalg.norm(q[3:7]) - 1
 
 # This class computes inverse kinematics by numerical optimization
 #
@@ -50,26 +24,33 @@ def normalized_quaternion(q):
 # Method solve computes a configuration in such a way that the poses of the
 # end effector coincide with their reference poses.
 class InverseKinematics (object):
-    leftFootJoint = 'left_leg_6_joint'
-    rightFootJoint = 'right_leg_6_joint'
-    waistJoint = 'waist_joint'
+	leftFootJoint = 'left_leg_6_joint'
+	rightFootJoint = 'right_leg_6_joint'
+	waistJoint = 'waist_joint'
 
-    def __init__ (self, robot):
-        self.robot = robot
-        self.data = self.robot.model.createData()
-        q = neutral (robot.model)
-        self.fullConfigSize = len(q)
-        forwardKinematics(robot.model, self.data, q)
-        # Initialize references of feet and center of mass with initial values
-        self.leftFootRefPose = self.data.oMi [robot.leftFootJointId].copy ()
-        self.rightFootRefPose = self.data.oMi [robot.rightFootJointId].copy ()
-        self.waistRefPose = self.data.oMi [robot.waistJointId].copy ()
+	def __init__ (self, robot):
+		self.robot = robot
+		self.data = self.robot.model.createData()
+		q = neutral (robot.model)
+		self.fullConfigSize = len(q)
+		forwardKinematics(robot.model, self.data, q)
+		# Initialize references of feet and center of mass with initial values
+		self.leftFootRefPose = self.data.oMi [robot.leftFootJointId].copy ()
+		self.rightFootRefPose = self.data.oMi [robot.rightFootJointId].copy ()
+		self.waistRefPose = self.data.oMi [robot.waistJointId].copy ()
 
-    def cost (self, q):
-        # write your code here
+	def cost (self, q):
+		forwardKinematics (self.robot.model, self.data, q)
+		errLeftFoot = log(self.leftFootRefPose.inverse() * self.data.oMi[self.robot.leftFootJointId])
+		errRightFoot = log(self.rightFootRefPose.inverse() * self.data.oMi[self.robot.rightFootJointId])
+		errWaist = log(self.waistRefPose.inverse() * self.data.oMi[self.robot.waistJointId])
+		err = np.concatenate ((errLeftFoot.vector,errRightFoot.vector,errWaist.vector))
+		return np.inner(err,err)
 
-    def solve (self, q):
-        # write your code here
+	def solve (self, q):
+		result = q.copy()
+		q_opt = fmin_slsqp(self.cost, q, f_eqcons=normalized_quaternion, callback=None)
+		return q_opt
 
 if __name__ == "__main__":
      from talos import Robot

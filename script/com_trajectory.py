@@ -1,31 +1,3 @@
-# Copyright 2023 CNRS
-
-# Author: Florent Lamiraux
-
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-
-# 1. Redistributions of source code must retain the above copyright
-# notice, this list of conditions and the following disclaimer.
-
-# 2. Redistributions in binary form must reproduce the above copyright
-# notice, this list of conditions and the following disclaimer in the
-# documentation and/or other materials provided with the distribution.
-
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-
 import numpy as np
 from numpy.linalg import norm, pinv
 from scipy.optimize import fmin_bfgs
@@ -53,7 +25,51 @@ class ComTrajectory(object):
         T = (1+n)*CoPDes.double_support_time + n * CoPDes.single_support_time
         N = int(T/self.delta_t) + 1
         self.N = N
-        # write your code here
+        self.X = np.zeros(2*N)
+        
+        D = np.zeros((2*N+2,2*N))
+        k=0
+        for i in range(2*N) :
+            for j in range(2*N) :
+                if (i==k and j==k) :
+                    k=k+1
+                    D[i,j]=1
+        k=0
+        for i in range(2, 2*N + 3):
+            for j in range(2*N) :
+                if (i==k+2 and j==k) :
+                    k=k+1
+                    D[i,j]=-1
+        
+
+        d0 = np.zeros((2*N + 2, 1))
+        d0[0:2, 0] = -start
+        d0[-2:, 0] = end
+
+        A = np.identity(2*N) + (self.z_com/(self.g*self.delta_t**2))*(D.T @ D)
+        
+        cop_des = CoPDes(self.start, self.steps, self.end)
+        times = self.delta_t * np.arange(N)
+        cop = np.array(list(map(cop_des, times)))
+        cop = cop.ravel().reshape(-1, 1)
+        b = cop - (self.z_com/(self.g*self.delta_t**2))*(D.T @ d0)
+
+        rows = 2*N
+        cols = 2*N - 4
+        C = np.zeros((rows, cols))
+        C[2:2+cols, :] = np.eye(cols)
+
+        d = np.zeros((2*N, 1))
+        d[0:2, 0] = start
+        d[-2:, 0] = end
+        
+        AC = A @ C
+        AC_plus = np.linalg.pinv(AC.T @ AC) @ AC.T
+
+        X_barre = (AC_plus) @ (b - A @ d)
+        self.X = C @ X_barre + d
+        self.X = self.X.reshape(-1)
+
         return self.X
 
     # Return projection of center of mass on horizontal plane at time t
@@ -70,7 +86,6 @@ class ComTrajectory(object):
         else:
             res[:2] = self.X[2*i-2:2*i]
         return res
-
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
