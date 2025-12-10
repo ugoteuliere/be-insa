@@ -4,7 +4,7 @@ from tools import Affine, Constant, Piecewise
 # input step positions in the plane
 class CoPDes(Piecewise):
     single_support_time = .5
-    double_support_time = .1
+    double_support_time = .1 
     # constructor
     #   - start: initial position of the CoP
     #   - steps: list of 2D vectors representing the successive positions of the feet,

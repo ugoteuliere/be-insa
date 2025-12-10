@@ -18,7 +18,7 @@ class ComTrajectory(object):
         self.end = end
         self.steps = steps
         self.z_com = z_com
-
+ 
     def compute(self):
         I2 = np.identity(2)
         n = len(self.steps)
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     start = np.array([0.,0.])
     steps = [np.array([0, .2]), np.array([.4, -.2]), np.array([.8, .2]), np.array([1.2, -.2])]
-    end = np.array([1.2,0.])
+    end = np.array([1.2,0.])    
     com_trajectory = ComTrajectory(start, steps, end, .7)
     X = com_trajectory.compute()
     times = 0.01 * np.arange(len(X)//2)
