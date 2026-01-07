@@ -1,4 +1,5 @@
 from tools import Affine, Constant, Piecewise
+import numpy as np
 
 # Compute a desired trajectory for the center of pressure, piecewise affine linking the
 # input step positions in the plane
@@ -11,17 +12,40 @@ class CoPDes(Piecewise):
     #   - end: final position of the CoP
     def __init__(self, start, steps, end):
         super().__init__()
-        t=0
-        self.segments.append(Affine(0,self.double_support_time,start,steps[0]))
-        t=t+self.double_support_time
-        for step in steps[1:]:
-            self.segments.append(Constant(t,t+self.single_support_time,self(t)))
-            t=t+self.single_support_time
-            self.segments.append(Affine(t,t+self.double_support_time,self(t),step))
-            t=t+self.double_support_time
-        self.segments.append(Affine(t,t+self.double_support_time,self(t),end))
-        t=t+self.double_support_time
-        self.segments.append(Constant(t,t+10,self(t)))
+        t = 0.0
+        
+        current_pos = np.array(start)
+        
+        # On nettoie la liste des steps pour ne garder que X et Y (les 2 premiers éléments)
+        # Cela transforme des steps [x, y, theta] en [x, y]
+        steps_2d = [np.array(s[:2]) for s in steps] 
+        end_2d = np.array(end[:2]) # Sécurité pour end aussi
+        # ----------------------
+
+        # Premier transfert (Double Support)
+        self.segments.append(Affine(t, t + self.double_support_time, current_pos, steps_2d[0]))
+        t += self.double_support_time
+        current_pos = steps_2d[0]
+
+        # Boucle sur les pas suivants (avec la liste corrigée steps_2d)
+        for step in steps_2d[1:]:
+            # Single Support
+            self.segments.append(Constant(t, t + self.single_support_time, current_pos))
+            t += self.single_support_time
+            
+            # Double Support
+            self.segments.append(Affine(t, t + self.double_support_time, current_pos, step))
+            t += self.double_support_time
+            
+            current_pos = step
+
+        # Dernier segment vers end
+        self.segments.append(Affine(t, t + self.double_support_time, current_pos, end_2d))
+        t += self.double_support_time
+        current_pos = end_2d
+
+        # Fin stable
+        self.segments.append(Constant(t, t + 10, current_pos))
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt

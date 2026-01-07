@@ -40,17 +40,16 @@ class ComTrajectory(object):
                 if (i==k+2 and j==k) :
                     k=k+1
                     D[i,j]=-1
-        
 
         d0 = np.zeros((2*N + 2, 1))
-        d0[0:2, 0] = -start
-        d0[-2:, 0] = end
+        d0[0:2, 0] = -self.start
+        d0[-2:, 0] = self.end
 
         A = np.identity(2*N) + (self.z_com/(self.g*self.delta_t**2))*(D.T @ D)
         
-        cop_des = CoPDes(self.start, self.steps, self.end)
+        self.cop_des = CoPDes(self.start, self.steps, self.end)
         times = self.delta_t * np.arange(N)
-        cop = np.array(list(map(cop_des, times)))
+        cop = np.array(list(map(self.cop_des, times)))
         cop = cop.ravel().reshape(-1, 1)
         b = cop - (self.z_com/(self.g*self.delta_t**2))*(D.T @ d0)
 
@@ -60,8 +59,8 @@ class ComTrajectory(object):
         C[2:2+cols, :] = np.eye(cols)
 
         d = np.zeros((2*N, 1))
-        d[0:2, 0] = start
-        d[-2:, 0] = end
+        d[0:2, 0] = self.start
+        d[-2:, 0] = self.end
         
         AC = A @ C
         AC_plus = np.linalg.pinv(AC.T @ AC) @ AC.T

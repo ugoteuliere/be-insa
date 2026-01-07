@@ -8,7 +8,7 @@ class CallbackLogger:
 	def __init__(self):
 		self.nfeval = 1
 	def __call__(self,x):
-		print('===CBK=== {0:4d}   {1}'.format(self.nfeval, x))
+		#print('===CBK=== {0:4d}   {1}'.format(self.nfeval, x))
 		self.nfeval += 1
 
 def normalized_quaternion(q):
@@ -48,8 +48,7 @@ class InverseKinematics (object):
 		return np.inner(err,err)
 
 	def solve (self, q):
-		result = q.copy()
-		q_opt = fmin_slsqp(self.cost, q, f_eqcons=normalized_quaternion, callback=None)
+		q_opt = fmin_slsqp(self.cost, q, f_eqcons=normalized_quaternion, iprint=-1, callback=None)
 		return q_opt
 
 if __name__ == "__main__":
