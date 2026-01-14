@@ -7,6 +7,9 @@ from scipy.optimize import fmin_slsqp
 from cop_des import CoPDes
 from walking_motion import WalkingMotion
 
+def normalized_quaternion(q):
+	return np.linalg.norm(q[3:7]) - 1
+
 class Bezier(object):
     """
     Bezier curve with any number of control points
@@ -69,7 +72,9 @@ class Integrand(object):
         self.derivative = bezier.derivative()
 
     def __call__(self, t):
-        pass
+        alpha = 8
+        theta = self.function(t)[3]
+        return (1/2) * ((np.dot((cos(theta),sin(theta),0),self.derivative(t)))**2 + alpha*(np.dot((-sin(theta),cos(theta),0),self.derivative(t)))**2 )
 
 class SlidingMotion(object):
     """
@@ -87,11 +92,15 @@ class SlidingMotion(object):
         """
         pass
 
-    def cost(self, X):
+    def cost(self, B):
         """
         Compute the cost of a trajectory represented by a Bezier curve
         """
-        assert(len(X.shape) == 1)
+        assert(len(B.shape) == 1)
+        boundary_cost = 
+        beta = 100
+        return = simpson(Integrand(B),t) + beta*boundary_cost
+
 
     def boundaryConstraints(self, X):
         """
@@ -104,6 +113,8 @@ class SlidingMotion(object):
         """
         Solve the optimization problem. Initialize with a straight line
         """
+        control_points = fmin_slsqp(self.cost, q, f_eqcons=normalized_quaternion, iprint=-1, callback=None)
+        return control_points
 
     def leftFootPose(self, pose):
         """
